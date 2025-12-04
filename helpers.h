@@ -75,7 +75,7 @@ inline std::vector<double> tukey_window(size_t N, double alpha) {
     
     return window;
 }
-
+/*
 inline void find_peaks(
     const std::vector<double>& data,
     std::vector<std::size_t>& locs,
@@ -84,14 +84,104 @@ inline void find_peaks(
     locs.clear();
     pks.clear();
 
-    if (data.size() < 3) {
-        return;
+    const std::size_t N = data.size();
+    if (N < 3) return;
+
+    std::size_t i = 1;
+
+    while (i + 1 < N) {
+       
+        if (data[i] > data[i - 1]) {
+
+            
+            if (data[i] > data[i + 1]) {
+                locs.push_back(i);
+                pks.push_back(data[i]);
+                ++i;  
+            }
+            
+            else if (data[i] == data[i + 1]) {
+                std::size_t left = i;
+                std::size_t right = i + 1;
+
+                
+                while (right + 1 < N && data[right] == data[right + 1]) {
+                    ++right;
+                }
+
+                
+                if (right < N - 1 && data[right] > data[right + 1]) {
+                    std::size_t peak_idx = (left + right) / 2; 
+                    locs.push_back(peak_idx);
+                    pks.push_back(data[peak_idx]);
+                }
+
+                i = right + 1; 
+            }
+            
+            else {
+                ++i;
+            }
+        } else {
+            ++i;
+        }
+    }
+} */
+inline void find_peaks(
+    const std::vector<double>& x,
+    std::vector<std::size_t>& locs,
+    std::vector<double>& pks
+) {
+    locs.clear();
+    pks.clear();
+
+    const std::size_t N = x.size();
+    if (N < 3) return;  // χρειάζονται τουλάχιστον 3 σημεία για peak
+
+    // Υπολογίζουμε "παράγωγο" τύπου np.diff(x)
+    std::vector<double> dx(N - 1);
+    for (std::size_t i = 0; i + 1 < N; ++i) {
+        dx[i] = x[i + 1] - x[i];
     }
 
-    for (std::size_t i = 1; i + 1 < data.size(); ++i) {
-        if (data[i] > data[i - 1] && data[i] > data[i + 1]) {
-            locs.push_back(i);
-            pks.push_back(data[i]);
+    std::size_t i = 1; // αντίστοιχο με το index στο x (1..N-2)
+
+    while (i + 1 < N) {
+        // --- Case 1: κανονικό peak (rising then falling) ---
+        if (dx[i - 1] > 0.0 && dx[i] < 0.0) {
+            std::size_t peak_idx = i;
+            locs.push_back(peak_idx);
+            pks.push_back(x[peak_idx]);
+            ++i;
+        }
+        // --- Case 2: plateau peak (rising, then flat, μετά falling) ---
+        else if (dx[i - 1] > 0.0 && dx[i] == 0.0) {
+            std::size_t left = i;
+            std::size_t right = i;
+
+            // επέκταση plateau προς τα δεξιά όσο dx == 0
+            while (right + 1 < N && dx[right] == 0.0) {
+                ++right;
+            }
+            // τώρα plateau indices στο x είναι [left .. right]
+            // dx[right] είναι η πρώτη διαφορά μετά το plateau
+
+            if (right + 1 < N && dx[right] < 0.0) {
+                // πρόκειται για plateau peak, πάρε το κέντρο (όπως SciPy)
+                std::size_t plateau_left = left;
+                std::size_t plateau_right = right;
+                std::size_t peak_idx = (plateau_left + plateau_right) / 2;
+
+                locs.push_back(peak_idx);
+                pks.push_back(x[peak_idx]);
+            }
+
+            // προχώρα μετά το plateau
+            i = right + 1;
+        }
+        else {
+            ++i;
         }
     }
 }
+
